@@ -7,7 +7,7 @@ import pandas as pd
 from data import SCENARIOS
 from core.mcdm import topsis_rank_candidates
 from core.physics import compute_blend_physics, FIBER_SPECS
-from core.chemistry import compute_molecular_descriptors, render_mol_svg, parse_molecule
+from core.chemistry import compute_molecular_descriptors, render_mol_svg, parse_molecule, generate_3d_molblock, render_3dmol_html
 from core.compliance import audit_compliance
 from core.techpack import generate_techpack_dict, generate_techpack_pdf
 from core.optimizer import run_pareto_optimization
@@ -55,6 +55,15 @@ def test_chemistry_rdkit_and_sascore():
 
     svg = render_mol_svg(smiles, width=200, height=120)
     assert "<svg" in svg
+
+    # Test 3Dmol.js support
+    molblock = generate_3d_molblock(smiles)
+    assert molblock is not None
+    assert "V2000" in molblock or "M  END" in molblock
+
+    html_3d = render_3dmol_html(smiles, height=300)
+    assert "3Dmol.js" in html_3d or "$3Dmol" in html_3d
+    assert "viewer_3d" in html_3d
 
 
 def test_compliance_auditor():

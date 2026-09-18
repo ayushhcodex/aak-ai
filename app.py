@@ -42,7 +42,8 @@ from data import (
 )
 from core.mcdm import topsis_rank_candidates
 from core.physics import FIBER_SPECS, WEAVE_FACTORS, compute_blend_physics
-from core.chemistry import compute_molecular_descriptors, render_mol_svg
+from core.chemistry import compute_molecular_descriptors, render_mol_svg, render_3dmol_html
+import streamlit.components.v1 as components
 from core.compliance import audit_compliance
 from core.techpack import generate_techpack_dict, generate_techpack_pdf
 from core.optimizer import run_pareto_optimization
@@ -80,7 +81,7 @@ def cached_clm_engine():
 
 # ── Page Configuration ───────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="AIMATRY | Materials Informatics Platform",
+    page_title="AAK-AI | Materials Informatics Platform",
     page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -283,11 +284,11 @@ div.stButton > button:hover {
 st.markdown(textwrap.dedent("""
 <div class="app-header">
     <div>
-        <div class="app-title">🧬 AIMATRY <span style="font-size:0.9rem; font-weight:500; color:#64748b;">v3.4 Enterprise</span></div>
-        <div class="app-subtitle">Materials Informatics & Generative Chemical Designer for Technical Protective Textiles</div>
+        <div class="app-title">🧬 AAK-AI</div>
+        <div class="app-subtitle">Enterprise Materials Informatics & Generative Chemical Designer for Protective Technical Textiles</div>
     </div>
     <div style="text-align:right;">
-        <span class="org-tag">NITRA Technical Campus · CSE</span>
+        <span class="org-tag">NITRA Technical Campus · CSE + Textile</span>
     </div>
 </div>
 """), unsafe_allow_html=True)
@@ -754,6 +755,8 @@ with tab_chem_gen:
         include_fr = st.checkbox("Attach Flame-Retardant Sidechains (Phosphonate / Trifluoromethyl / Nitrile)", value=True)
         max_sa = st.slider("Max Permitted SAScore (1 = Easy, 10 = Complex)", 2.5, 6.0, 4.5, 0.1)
 
+        struct_view = st.radio("Molecular Display Mode", ["2D Vector (SVG)", "3D WebGL (3Dmol.js)"], horizontal=True)
+
         if st.button("🧪 Synthesize In-Silico Monomer Candidates", use_container_width=True):
             with st.spinner("Generating valid chemical structures and calculating RDKit descriptors..."):
                 clm = cached_clm_engine()
@@ -762,13 +765,19 @@ with tab_chem_gen:
 
         if "gen_monomers" in st.session_state and st.session_state["gen_monomers"]:
             for c in st.session_state["gen_monomers"]:
+                if struct_view == "3D WebGL (3Dmol.js)":
+                    mol_render_block = f"""<div style="margin:0.5rem 0;">"""
+                    # We will render 3D via components.html below
+                else:
+                    mol_render_block = f"""<div style="text-align:center; background:#0b0f19; border-radius:6px; padding:6px; margin:0.5rem 0;">{c['svg_b64']}</div>"""
+
                 cand_card = f"""<div class="enterprise-card" style="margin-bottom:0.75rem;">
 <div style="display:flex; justify-content:space-between;">
 <span style="font-weight:700; color:#38bdf8;">{c['candidate_id']} · {c['core_scaffold']}</span>
 <span style="color:#34d399; font-weight:600; font-size:0.8rem;">Est. Td: {c['estimated_td_c']} °C</span>
 </div>
 <div style="font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:#94a3b8; margin:0.3rem 0; word-break:break-all;">{c['smiles']}</div>
-<div style="text-align:center; background:#0b0f19; border-radius:6px; padding:6px; margin:0.5rem 0;">{c['svg_b64']}</div>
+{mol_render_block if struct_view != "3D WebGL (3Dmol.js)" else ""}
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:0.78rem; color:#94a3b8;">
 <div><b>Mol Wt:</b> {c['mol_weight']} g/mol</div>
 <div><b>SAScore:</b> {c['sascore']} / 10</div>
@@ -777,12 +786,36 @@ with tab_chem_gen:
 </div>
 </div>"""
                 st.markdown(cand_card, unsafe_allow_html=True)
+                if struct_view == "3D WebGL (3Dmol.js)":
+                    html_3d = render_3dmol_html(c['smiles'], height=220, spin=True)
+                    components.html(html_3d, height=230)
 
     with gc_c2:
-        st.markdown("#### 🗄️ Curated Reactive Monomer SQLite Database")
-        st.markdown("<p style='font-size:0.85rem; color:#94a3b8;'>Browse curated monomers with computed 512-bit Morgan fingerprints (ECFP4), commercial suppliers, and unit costs.</p>", unsafe_allow_html=True)
+        st.markdown("#### 🗄️ Curated Reactive Monomer Database")
+        st.markdown("<p style='font-size:0.85rem; color:#94a3b8;'>Browse curated monomers with computed 512-bit Morgan fingerprints (ECFP4), suppliers, and unit costs.</p>", unsafe_allow_html=True)
         monomer_df = cached_monomers()
-        st.dataframe(monomer_df, use_container_width=True, height=420)
+        st.dataframe(monomer_df, use_container_width=True, height=250)
+
+        st.markdown("#### 🌐 3D Interactive Conformation Studio (3Dmol.js)")
+        selected_monomer_name = st.selectbox(
+            "Select Monomer to Inspect in 3D WebGL",
+            monomer_df["name"].tolist() if not monomer_df.empty else ["p-Phenylenediamine (PPD)"],
+        )
+        
+        # Get SMILES for selected monomer
+        match_smiles = "Nc1ccc(N)cc1"
+        if not monomer_df.empty and selected_monomer_name in monomer_df["name"].values:
+            match_smiles = monomer_df[monomer_df["name"] == selected_monomer_name].iloc[0]["smiles"]
+
+        c_surf, c_style = st.columns([1, 1])
+        with c_surf:
+            show_vdw = st.checkbox("Show VDW Surface Cloud", value=False)
+        with c_style:
+            atom_style = st.selectbox("3D Representation", ["Stick (Jmol)", "Ball & Stick", "Spacefill"], index=0)
+
+        style_map = {"Stick (Jmol)": "stick", "Ball & Stick": "sphere", "Spacefill": "spacefill"}
+        viewer_html = render_3dmol_html(match_smiles, height=280, style=style_map[atom_style], show_surface=show_vdw, spin=True)
+        components.html(viewer_html, height=295)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -869,4 +902,4 @@ with tab_analytics:
                     ai_reply = ask_technical_copilot(user_query, selected_threat, blend_title, physics_res, compliance_res)
                     st.chat_message("assistant").markdown(ai_reply)
 
-st.markdown('<div style="text-align:center; margin-top:2.5rem; font-size:0.75rem; color:#64748b;">AIMATRY v3.4 Enterprise · Materials Informatics & Optimization Engine · NITRA Technical Campus</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; margin-top:2.5rem; font-size:0.75rem; color:#64748b;">AAK-AI · Enterprise Materials Informatics & Optimization Engine · NITRA Technical Campus</div>', unsafe_allow_html=True)
