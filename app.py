@@ -45,7 +45,7 @@ from core.physics import FIBER_SPECS, WEAVE_FACTORS, compute_blend_physics
 from core.chemistry import compute_molecular_descriptors, render_mol_svg, render_3dmol_html
 import streamlit.components.v1 as components
 from core.compliance import audit_compliance
-from core.techpack import generate_techpack_dict, generate_techpack_pdf
+from core.techpack import generate_techpack_dict, generate_techpack_pdf, generate_comprehensive_dossier_pdf
 from core.optimizer import run_pareto_optimization
 from ml.surrogate import get_surrogate_model
 from core.inverse_design import inverse_solve_formulation
@@ -501,6 +501,10 @@ physics_res = compute_blend_physics(constituents, gsm=current_gsm, weave_type=cu
 compliance_res = audit_compliance(physics_res)
 active_scores = physics_res["scores"]
 
+# Compute ML Surrogate Predictions for Active Material
+surrogate_model = cached_surrogate()
+ml_preds = surrogate_model.predict_with_uncertainty(constituents, gsm=current_gsm, weave_type=current_weave)
+
 # Find TOPSIS rank for active scenario
 topsis_rank_val = 1
 topsis_match_pct = 95.0
@@ -509,6 +513,28 @@ if selected_threat in SCENARIOS:
     if not match_row.empty:
         topsis_rank_val = int(match_row.iloc[0]["Rank"])
         topsis_match_pct = float(match_row.iloc[0]["TOPSIS Match %"])
+
+# Pre-compile Complete Print-Ready Technical Dossier PDF
+pdf_dossier_bytes = generate_comprehensive_dossier_pdf(
+    scenario_name=selected_threat,
+    blend_title=blend_title,
+    feature_text=feature_text,
+    physics_data=physics_res,
+    compliance_data=compliance_res,
+    surrogate_data=ml_preds,
+    topsis_data={
+        "rank": topsis_rank_val,
+        "match_pct": topsis_match_pct,
+        "user_weights": user_weights,
+    },
+    synth_route=active_scenario_data.get("synth_route"),
+    aging_data=active_scenario_data.get("aging"),
+    target_inputs=target_inputs if design_mode == "Target Specs → Inverse Design Solver" else None,
+    inv_result=inv_result if design_mode == "Target Specs → Inverse Design Solver" else None,
+    workflow_mode=design_mode,
+    confidence_score=active_scenario_data.get("confidence", 92),
+    status_text=active_scenario_data.get("status", "Verified Formulation"),
+)
 
 if run_pipeline_clicked:
     with st.status("🔬 Running Materials Informatics & Multi-Objective Synthesis...", expanded=True) as status:
@@ -656,6 +682,17 @@ with card_col:
 </div>
 </div>"""
     st.markdown(summary_html, unsafe_allow_html=True)
+
+    # Print-Ready PDF Technical Dossier Export Button
+    st.download_button(
+        label="📄 EXPORT PRINT-READY TECHNICAL DOSSIER (PDF)",
+        data=pdf_dossier_bytes,
+        file_name=f"AAK_AI_{selected_threat.replace(' ', '_')}_Technical_Dossier.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+        help="Download publication-grade, print-ready PDF containing all processed physics, compliance, BOM, ML predictions, and chemical synthesis route.",
+        key="export_dossier_main_btn",
+    )
 
 with chart_col:
     comparisons = None
@@ -915,20 +952,22 @@ with tab_compliance_tech:
         st.info(f"**Classification:** {arc_info['classification']} | **Min ATPV Requirement:** {arc_info.get('min_atpv_cal_cm2', 8.0)} cal/cm²")
 
     with comp_c2:
-        st.markdown("#### 📄 Industrial Manufacturing Tech-Pack BOM PDF")
-        st.markdown("<p style='font-size:0.85rem; color:#94a3b8;'>Generates a comprehensive manufacturing Bill of Materials (BOM) for textile spinning and weaving mills.</p>", unsafe_allow_html=True)
+        st.markdown("#### 📄 Print-Ready Technical Dossier & Production Tech-Pack")
+        st.markdown("<p style='font-size:0.85rem; color:#94a3b8;'>Generates a comprehensive, print-ready multi-page engineering PDF dossier containing 100% of all processed metrics (Physics, BOM, Standards Compliance, ML Surrogates, Synthesis Route, and 5-Year Durability).</p>", unsafe_allow_html=True)
 
-        if st.button("📄 Generate Industrial Tech-Pack PDF", use_container_width=True):
-            with st.spinner("Generating production specification PDF with ReportLab..."):
-                pdf_bytes = generate_techpack_pdf(blend_title, physics_res, compliance_res)
-                st.download_button(
-                    label="📥 Download Complete Tech-Pack PDF",
-                    data=pdf_bytes,
-                    file_name=f"TechPack_{selected_threat.replace(' ', '_')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
-                st.success("✅ Tech-Pack PDF successfully compiled!")
+        st.download_button(
+            label="📥 Export Complete Print-Ready PDF Dossier",
+            data=pdf_dossier_bytes,
+            file_name=f"AAK_AI_{selected_threat.replace(' ', '_')}_Complete_Dossier.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            key="export_dossier_tab4_btn",
+            help="Download complete multi-page Technical Dossier with running headers, footers, and all computed metrics.",
+        )
+
+        with st.expander("🔍 View Tech-Pack Specification JSON"):
+            techpack_payload = generate_techpack_dict(selected_threat, blend_title, physics_res, compliance_res)
+            st.json(techpack_payload)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
