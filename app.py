@@ -322,7 +322,6 @@ st.markdown(textwrap.dedent("""
 <div class="app-header">
     <div>
         <div class="app-title">🧬 AAK-AI</div>
-        <div class="app-subtitle">Enterprise Materials Informatics & Generative Chemical Designer for Protective Technical Textiles</div>
     </div>
     <div style="text-align:right;">
         <span class="org-tag">NITRA Technical Campus · CSE + Textile</span>
@@ -972,5 +971,3 @@ with tab_analytics:
                 with st.spinner("Consulting Gemini materials model..."):
                     ai_reply = ask_technical_copilot(user_query, selected_threat, blend_title, physics_res, compliance_res)
                     st.chat_message("assistant").markdown(ai_reply)
-
-st.markdown('<div style="text-align:center; margin-top:2.5rem; font-size:0.75rem; color:#64748b;">AAK-AI · Enterprise Materials Informatics & Optimization Engine · NITRA Technical Campus</div>', unsafe_allow_html=True)
