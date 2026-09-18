@@ -1,0 +1,20 @@
+# Environment variables and API keys
+.env
+*.env
+.env.local
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Streamlit local credentials
+.streamlit/credentials.toml
+
+# SQLite local data
+*.db-journal
+/tmp/
+
+# OS artifacts
+.DS_Store
