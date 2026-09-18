@@ -84,7 +84,7 @@ st.set_page_config(
     page_title="AAK-AI | Materials Informatics Platform",
     page_icon="🧬",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── Clean Professional Enterprise Theme ─────────────────────────────────────
@@ -276,6 +276,43 @@ div.stButton > button:hover {
     color: #38bdf8 !important;
     font-weight: 600;
 }
+
+/* Hide Default Left Sidebar */
+[data-testid="stSidebar"] {
+    display: none !important;
+}
+[data-testid="collapsedControl"] {
+    display: none !important;
+}
+
+/* Top Command Studio Deck */
+.control-deck {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+.deck-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #38bdf8;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.control-sublabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.4rem;
+}
 </style>
 """), unsafe_allow_html=True)
 
@@ -295,48 +332,59 @@ st.markdown(textwrap.dedent("""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR CONTROLS & FORMULATION WORKFLOW
+# FULL-WIDTH TOP MISSION CONTROL STUDIO & FORMULATION DECK
 # ═══════════════════════════════════════════════════════════════════════════════
 
-st.sidebar.markdown('<div class="section-title" style="margin-top:0;">Design & Simulation Mode</div>', unsafe_allow_html=True)
-design_mode = st.sidebar.radio(
-    "Select Workflow Mode",
-    [
-        "Curated Threat Scenarios + Live TOPSIS",
-        "Target Specs → Inverse Design Solver",
-        "Custom Multi-Fiber Blender",
-    ],
-    label_visibility="collapsed",
-)
+st.markdown('<div class="control-deck">', unsafe_allow_html=True)
 
-st.sidebar.markdown('<div class="section-title">TOPSIS Priority Weights</div>', unsafe_allow_html=True)
-st.sidebar.caption("Adjust multi-criteria objective weights for ranking:")
+# Row 1: Workflow Mode Selector + Synthesis Action Button
+deck_col1, deck_col2 = st.columns([3.4, 1.2], gap="large")
 
-user_weights = {}
-user_weights["Thermal Protection (HTP)"] = st.sidebar.slider("Thermal Protection (HTP)", 0, 100, 75, 5)
-user_weights["Comfort & Breathability (THL)"] = st.sidebar.slider("Comfort & Breathability (THL)", 0, 100, 60, 5)
-user_weights["Tensile Strength"] = st.sidebar.slider("Tensile Strength", 0, 100, 70, 5)
-user_weights["Flexibility"] = st.sidebar.slider("Flexibility / Drape", 0, 100, 50, 5)
-user_weights["Manufacturability"] = st.sidebar.slider("Manufacturability / SAScore", 0, 100, 65, 5)
+with deck_col1:
+    st.markdown('<div class="deck-title">🎛️ Design & Simulation Workflow Mode</div>', unsafe_allow_html=True)
+    design_mode = st.radio(
+        "Select Workflow Mode",
+        [
+            "Curated Threat Scenarios + Live TOPSIS",
+            "Target Specs → Inverse Design Solver",
+            "Custom Multi-Fiber Blender",
+        ],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
 
-# Calculate TOPSIS Ranking
-topsis_df, top_recommended = topsis_rank_candidates(user_weights)
+with deck_col2:
+    st.markdown('<div class="control-sublabel" style="text-align:right;">Pipeline Action</div>', unsafe_allow_html=True)
+    run_pipeline_clicked = st.button("⚡ EXECUTE VIRTUAL SYNTHESIS PIPELINE", use_container_width=True)
 
+st.markdown('<hr style="border:none; border-top:1px solid #1e293b; margin:0.8rem 0 1rem 0;">', unsafe_allow_html=True)
 
-
-# ── Workflow Branching ───────────────────────────────────────────────────────
+# Contextual Formulation Parameters
 if design_mode == "Curated Threat Scenarios + Live TOPSIS":
-    st.sidebar.markdown('<div class="section-title">Operational Threat Scenario</div>', unsafe_allow_html=True)
-    selected_threat = st.sidebar.selectbox(
-        "Threat Environment",
-        list(SCENARIOS.keys()),
-        index=list(SCENARIOS.keys()).index(top_recommended) if top_recommended in SCENARIOS else 0,
-    )
-    compare_scenarios = st.sidebar.multiselect(
-        "Compare Benchmarks on Radar",
-        [k for k in SCENARIOS.keys() if k != selected_threat],
-        default=[],
-    )
+    t_c1, t_c2 = st.columns([1.1, 1.9], gap="large")
+    with t_c1:
+        st.markdown('<div class="control-sublabel">Operational Threat Environment</div>', unsafe_allow_html=True)
+        selected_threat = st.selectbox(
+            "Threat Environment",
+            list(SCENARIOS.keys()),
+            index=0,
+            label_visibility="collapsed",
+        )
+        compare_scenarios = st.multiselect(
+            "Compare Benchmarks on Radar Overlay",
+            [k for k in SCENARIOS.keys() if k != selected_threat],
+            default=[],
+        )
+    with t_c2:
+        st.markdown('<div class="control-sublabel">TOPSIS Objective Weights (Multi-Criteria Priority Tuning)</div>', unsafe_allow_html=True)
+        w1, w2, w3, w4, w5 = st.columns(5)
+        user_weights = {}
+        user_weights["Thermal Protection (HTP)"] = w1.slider("Thermal (HTP)", 0, 100, 75, 5)
+        user_weights["Comfort & Breathability (THL)"] = w2.slider("Comfort (THL)", 0, 100, 60, 5)
+        user_weights["Tensile Strength"] = w3.slider("Tensile", 0, 100, 70, 5)
+        user_weights["Flexibility"] = w4.slider("Flexibility", 0, 100, 50, 5)
+        user_weights["Manufacturability"] = w5.slider("Manufacturability", 0, 100, 65, 5)
+
     active_scenario_data = SCENARIOS[selected_threat]
     constituents = active_scenario_data.get("constituents", {"Meta-aramid (Nomex)": 100.0})
     current_gsm = active_scenario_data.get("default_gsm", 260.0)
@@ -345,12 +393,21 @@ if design_mode == "Curated Threat Scenarios + Live TOPSIS":
     feature_text = active_scenario_data["feature"]
 
 elif design_mode == "Target Specs → Inverse Design Solver":
-    st.sidebar.markdown('<div class="section-title">Target Specification Solver</div>', unsafe_allow_html=True)
-    t_htp = st.sidebar.slider("Target Minimum HTP Score", 40, 98, 85, 2)
-    t_thl = st.sidebar.slider("Target Minimum THL Score", 20, 90, 65, 2)
-    t_ten = st.sidebar.slider("Target Minimum Tensile Score", 30, 98, 75, 2)
-    t_loi = st.sidebar.slider("Target Minimum LOI (%)", 20.0, 70.0, 30.0, 1.0)
-    t_cost = st.sidebar.slider("Max Production Budget (₹/m²)", 1000, 12000, 4500, 250)
+    st.markdown('<div class="control-sublabel">Target Performance Specifications & Maximum Production Budget Ceiling</div>', unsafe_allow_html=True)
+    i1, i2, i3, i4, i5 = st.columns(5)
+    t_htp = i1.slider("Min HTP Score", 40, 98, 85, 2)
+    t_thl = i2.slider("Min THL (W/m²)", 20, 90, 65, 2)
+    t_ten = i3.slider("Min Tensile Score", 30, 98, 75, 2)
+    t_loi = i4.slider("Min LOI (%)", 20.0, 70.0, 30.0, 1.0)
+    t_cost = i5.slider("Max Budget (₹/m²)", 1000, 12000, 4500, 250)
+
+    user_weights = {
+        "Thermal Protection (HTP)": 75,
+        "Comfort & Breathability (THL)": 60,
+        "Tensile Strength": 70,
+        "Flexibility": 50,
+        "Manufacturability": 65,
+    }
 
     target_inputs = {
         "min_htp": t_htp,
@@ -381,20 +438,36 @@ elif design_mode == "Target Specs → Inverse Design Solver":
     }
 
 else:
-    st.sidebar.markdown('<div class="section-title">Custom Fiber Blend Configuration</div>', unsafe_allow_html=True)
+    st.markdown('<div class="control-sublabel">Custom Multi-Fiber Blend Ratio, Areal Weight & Weave Selection</div>', unsafe_allow_html=True)
     selected_threat = "Custom Formulated Composite"
     compare_scenarios = []
 
-    f1 = st.sidebar.selectbox("Primary Fiber", list(FIBER_SPECS.keys()), index=0)
-    f1_pct = st.sidebar.slider(f"{f1} (%)", 10, 100, 60, 5)
+    user_weights = {
+        "Thermal Protection (HTP)": 75,
+        "Comfort & Breathability (THL)": 60,
+        "Tensile Strength": 70,
+        "Flexibility": 50,
+        "Manufacturability": 65,
+    }
 
-    f2_options = ["None"] + [f for f in FIBER_SPECS.keys() if f != f1]
-    f2 = st.sidebar.selectbox("Secondary Fiber", f2_options, index=1)
-    f2_pct = st.sidebar.slider(f"{f2} (%)", 0, 90, 30, 5) if f2 != "None" else 0
+    b1, b2, b3 = st.columns(3)
+    with b1:
+        f1 = st.selectbox("Primary Fiber", list(FIBER_SPECS.keys()), index=0)
+        f1_pct = st.slider(f"{f1} (%)", 10, 100, 60, 5)
+    with b2:
+        f2_options = ["None"] + [f for f in FIBER_SPECS.keys() if f != f1]
+        f2 = st.selectbox("Secondary Fiber", f2_options, index=1)
+        f2_pct = st.slider(f"{f2} (%)", 0, 90, 30, 5) if f2 != "None" else 0
+    with b3:
+        f3_options = ["None"] + [f for f in FIBER_SPECS.keys() if f not in [f1, f2]]
+        f3 = st.selectbox("Tertiary Functional Fiber", f3_options, index=2 if len(f3_options) > 2 else 0)
+        f3_pct = st.slider(f"{f3} (%)", 0, 50, 10, 5) if f3 != "None" else 0
 
-    f3_options = ["None"] + [f for f in FIBER_SPECS.keys() if f not in [f1, f2]]
-    f3 = st.sidebar.selectbox("Tertiary Functional Fiber", f3_options, index=2 if len(f3_options) > 2 else 0)
-    f3_pct = st.sidebar.slider(f"{f3} (%)", 0, 50, 10, 5) if f3 != "None" else 0
+    w_c1, w_c2 = st.columns(2)
+    with w_c1:
+        current_gsm = st.slider("Fabric Areal Density (GSM)", 120, 500, 280, 10)
+    with w_c2:
+        current_weave = st.selectbox("Fabric Weave Architecture", list(WEAVE_FACTORS.keys()), index=2)
 
     raw_dict = {f1: f1_pct}
     if f2 != "None" and f2_pct > 0:
@@ -404,9 +477,6 @@ else:
 
     total_pct = sum(raw_dict.values())
     constituents = {k: round((v / total_pct) * 100, 1) for k, v in raw_dict.items()}
-
-    current_gsm = st.sidebar.slider("Fabric Areal Density (GSM)", 120, 500, 280, 10)
-    current_weave = st.sidebar.selectbox("Fabric Weave Architecture", list(WEAVE_FACTORS.keys()), index=2)
 
     blend_title = " / ".join([f"{pct}% {name.split(' ')[0]}" for name, pct in constituents.items()])
     feature_text = f"Custom multi-fiber formulation woven in {current_weave} at {current_gsm} g/m²."
@@ -422,6 +492,11 @@ else:
         "aging": {"years": [0, 1, 2, 3, 4, 5], "retention_pct": [100, 96, 91, 85, 78, 70], "metric": "Tensile strength retention (%)"},
     }
 
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Calculate TOPSIS Ranking
+topsis_df, top_recommended = topsis_rank_candidates(user_weights)
+
 # Compute Real Physics & Compliance
 physics_res = compute_blend_physics(constituents, gsm=current_gsm, weave_type=current_weave)
 compliance_res = audit_compliance(physics_res)
@@ -436,11 +511,6 @@ if selected_threat in SCENARIOS:
         topsis_rank_val = int(match_row.iloc[0]["Rank"])
         topsis_match_pct = float(match_row.iloc[0]["TOPSIS Match %"])
 
-
-# ── Primary Pipeline Execution Button in Sidebar ─────────────────────────────
-st.sidebar.markdown('<div class="section-title">Pipeline Execution</div>', unsafe_allow_html=True)
-run_pipeline_clicked = st.sidebar.button("⚡ EXECUTE VIRTUAL SYNTHESIS PIPELINE", use_container_width=True)
-
 if run_pipeline_clicked:
     with st.status("🔬 Running Materials Informatics & Multi-Objective Synthesis...", expanded=True) as status:
         st.write(f"⚙️ Calculating Voigt-Reuss Micromechanics across {len(constituents)} constituent fibers...")
@@ -452,6 +522,7 @@ if run_pipeline_clicked:
         st.write("📈 Computing NSGA-II Multi-Objective Pareto Frontier with pymoo...")
         time.sleep(0.2)
         status.update(label="✅ Virtual Synthesis & Optimization Pipeline Complete!", state="complete")
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
